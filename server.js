@@ -20,7 +20,12 @@ const MOBILE_RETURN_URL =
 app.use(cors()); // Allow requests from Android app
 app.use(express.json()); // Parse JSON bodies
 
-// Health check endpoint
+// Health check endpoint (for Render cold start warm-up)
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
+// Root endpoint
 app.get('/', (req, res) => {
     res.json({ 
         status: 'OK', 
