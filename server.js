@@ -10,6 +10,12 @@ const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || 'AXTNZhFFSksHwus-uXRnc6
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || 'ENJvmRliowdh4KsGDVoYiEPW-yx2i0mlXGlMZ0hex2vZeQbv5iSiUHajDTGUqwRGCyJFN2VstYJz2uO7';
 const PAYPAL_BASE_URL = 'https://api-m.paypal.com'; // Live environment
 
+// Mobile return URL (deep link back to Android app)
+// Dapat tumugma ito sa RETURN_URL sa Android app at sa intent-filter sa AndroidManifest.xml
+const MOBILE_RETURN_URL =
+  process.env.MOBILE_RETURN_URL ||
+  'com.example.erzone_bicyclestore_mobileapp://paypal';
+
 // Middleware
 app.use(cors()); // Allow requests from Android app
 app.use(express.json()); // Parse JSON bodies
@@ -65,6 +71,13 @@ app.post('/api/orders', async (req, res) => {
         // Create order
         const orderData = {
             intent: 'CAPTURE',
+            application_context: {
+                // Deep link pabalik sa Android app kapag success o cancel
+                return_url: MOBILE_RETURN_URL,
+                cancel_url: MOBILE_RETURN_URL,
+                // Since alam na natin ang final amount, gamitin ang PAY_NOW flow
+                user_action: 'PAY_NOW'
+            },
             purchase_units: [{
                 amount: {
                     currency_code: currency || 'PHP',
