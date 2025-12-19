@@ -78,12 +78,12 @@ app.post('/api/orders', async (req, res) => {
         const accessToken = await getPayPalAccessToken();
         
         // Create order
+        // NOTE: Hindi natin kailangan ilagay ang return_url/cancel_url sa application_context
+        // dahil ang PayPal Web Payments SDK sa Android mismo ang magha-handle ng deep link.
+        // Ang custom scheme URL (com.example...://paypal) ay hindi valid sa PayPal API.
         const orderData = {
             intent: 'CAPTURE',
             application_context: {
-                // Deep link pabalik sa Android app kapag success o cancel
-                return_url: MOBILE_RETURN_URL,
-                cancel_url: MOBILE_RETURN_URL,
                 // Since alam na natin ang final amount, gamitin ang PAY_NOW flow
                 user_action: 'PAY_NOW'
             },
