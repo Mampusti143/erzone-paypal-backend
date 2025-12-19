@@ -34,6 +34,21 @@ app.get('/', (req, res) => {
     });
 });
 
+// PayPal return/cancel redirect endpoint (para sa application_context)
+// Magre-redirect sa deep link na ha-handle ng Android SDK
+// IMPORTANT: Gumamit ng HTML/JavaScript redirect para sa deep links
+app.get('/paypal/return', (req, res) => {
+    // HTML redirect para sa deep link - ang Android SDK mismo ang magha-handle nito
+    const deepLink = MOBILE_RETURN_URL;
+    res.send(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${deepLink}"></head><body><script>window.location.href="${deepLink}";</script></body></html>`);
+});
+
+app.get('/paypal/cancel', (req, res) => {
+    // HTML redirect para sa deep link - ang Android SDK mismo ang magha-handle nito
+    const deepLink = MOBILE_RETURN_URL;
+    res.send(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${deepLink}"></head><body><script>window.location.href="${deepLink}";</script></body></html>`);
+});
+
 // Get PayPal access token
 async function getPayPalAccessToken() {
     try {
@@ -78,12 +93,15 @@ app.post('/api/orders', async (req, res) => {
         const accessToken = await getPayPalAccessToken();
         
         // Create order
-        // NOTE: Hindi natin kailangan ilagay ang return_url/cancel_url sa application_context
-        // dahil ang PayPal Web Payments SDK sa Android mismo ang magha-handle ng deep link.
-        // Ang custom scheme URL (com.example...://paypal) ay hindi valid sa PayPal API.
+        // IMPORTANT: Kailangan natin ng HTTP/HTTPS URLs sa application_context
+        // (hindi custom scheme). Ang backend redirect endpoint ang magre-redirect
+        // sa deep link, tapos ang Android SDK mismo ang magha-handle.
+        const baseUrl = process.env.BACKEND_URL || 'https://erzone-paypal-backend.onrender.com';
         const orderData = {
             intent: 'CAPTURE',
             application_context: {
+                return_url: `${baseUrl}/paypal/return`,
+                cancel_url: `${baseUrl}/paypal/cancel`,
                 // Since alam na natin ang final amount, gamitin ang PAY_NOW flow
                 user_action: 'PAY_NOW'
             },
