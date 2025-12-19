@@ -46,7 +46,8 @@ async function getPayPalAccessToken() {
                 headers: {
                     'Authorization': `Basic ${auth}`,
                     'Content-Type': 'application/x-www-form-urlencoded'
-                }
+                },
+                timeout: 15000 // 15 seconds timeout para hindi mag-hang
             }
         );
         
@@ -59,8 +60,11 @@ async function getPayPalAccessToken() {
 
 // Create PayPal order endpoint
 app.post('/api/orders', async (req, res) => {
+    const startTime = Date.now();
     try {
         const { amount, currency, description } = req.body;
+        
+        console.log(`[${new Date().toISOString()}] Creating PayPal order: ${amount} ${currency}`);
         
         // Validate request body
         if (!amount || !currency) {
@@ -100,18 +104,23 @@ app.post('/api/orders', async (req, res) => {
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
-                }
+                },
+                timeout: 20000 // 20 seconds timeout para hindi mag-hang
             }
         );
         
         // Return order ID
+        const elapsed = Date.now() - startTime;
+        console.log(`[${new Date().toISOString()}] Order created successfully in ${elapsed}ms: ${response.data.id}`);
+        
         res.json({
             orderId: response.data.id,
             status: response.data.status
         });
         
     } catch (error) {
-        console.error('Error creating PayPal order:', error.response?.data || error.message);
+        const elapsed = Date.now() - startTime;
+        console.error(`[${new Date().toISOString()}] Error creating PayPal order (${elapsed}ms):`, error.response?.data || error.message);
         res.status(500).json({
             error: 'Failed to create PayPal order',
             message: error.response?.data?.message || error.message
