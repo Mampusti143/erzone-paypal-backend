@@ -5,10 +5,11 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-/* =========================
-   PAYPAL CONFIG (BEST PRACTICE)
-========================= */
+/* ================================
+   PAYPAL CONFIG
+================================ */
 
+// PayPal credentials (ENV FIRST, fallback for safety)
 const PAYPAL_CLIENT_ID =
   process.env.PAYPAL_CLIENT_ID ||
   'AXTNZhFFSksHwus-uXRnc6eCPlIqfn5xrhFbySj-1dc2wVRhAeoTi09F06gqQ7Dbl0wiWDF9Muzjl6d4';
@@ -18,31 +19,20 @@ const PAYPAL_CLIENT_SECRET =
   'ENJvmRliowdh4KsGDVoYiEPW-yx2i0mlXGlMZ0hex2vZeQbv5iSiUHajDTGUqwRGCyJFN2VstYJz2uO7';
 
 // LIVE PayPal
-const PAYPAL_BASE_URL =
-  process.env.PAYPAL_BASE_URL ||
-  'https://api-m.paypal.com';
+const PAYPAL_BASE_URL = 'https://api-m.paypal.com';
 
-// Render backend URL
-const BACKEND_URL =
-  process.env.BACKEND_URL ||
-  'https://erzone-paypal-backend.onrender.com';
-
-// Android deep link
-const MOBILE_RETURN_URL =
-  process.env.MOBILE_RETURN_URL ||
-  'com.example.erzone_bicyclestore_mobileapp://paypal';
-
-/* =========================
+/* ================================
    MIDDLEWARE
-========================= */
+================================ */
 
 app.use(cors());
 app.use(express.json());
 
-/* =========================
-   HEALTH & ROOT
-========================= */
+/* ================================
+   BASIC ROUTES
+================================ */
 
+// Health check (important for Render)
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
@@ -50,58 +40,14 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'ERZone PayPal Backend Server is running',
-    timestamp: new Date().toISOString()
+    message: 'ERZone PayPal Backend is running',
+    time: new Date().toISOString()
   });
 });
 
-/* =========================
-   PAYPAL RETURN / CANCEL
-========================= */
-
-// IMPORTANT:
-// HTML + JavaScript redirect (required for Android deep links)
-app.get('/paypal/return', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  res.setHeader('Cache-Control', 'no-store');
-
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta http-equiv="refresh" content="0;url=${MOBILE_RETURN_URL}">
-      </head>
-      <body>
-        <script>
-          window.location.href = "${MOBILE_RETURN_URL}";
-        </script>
-      </body>
-    </html>
-  `);
-});
-
-app.get('/paypal/cancel', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  res.setHeader('Cache-Control', 'no-store');
-
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta http-equiv="refresh" content="0;url=${MOBILE_RETURN_URL}">
-      </head>
-      <body>
-        <script>
-          window.location.href = "${MOBILE_RETURN_URL}";
-        </script>
-      </body>
-    </html>
-  `);
-});
-
-/* =========================
-   PAYPAL ACCESS TOKEN
-========================= */
+/* ================================
+   PAYPAL FUNCTIONS
+================================ */
 
 async function getPayPalAccessToken() {
   try {
@@ -131,9 +77,9 @@ async function getPayPalAccessToken() {
   }
 }
 
-/* =========================
-   CREATE PAYPAL ORDER
-========================= */
+/* ================================
+   CREATE ORDER (NO REDIRECT)
+================================ */
 
 app.post('/api/orders', async (req, res) => {
   try {
@@ -149,13 +95,6 @@ app.post('/api/orders', async (req, res) => {
 
     const orderData = {
       intent: 'CAPTURE',
-      application_context: {
-        brand_name: 'ERZone Bicycle Store',
-        landing_page: 'BILLING',
-        user_action: 'PAY_NOW',
-        return_url: `${BACKEND_URL}/paypal/return`,
-        cancel_url: `${BACKEND_URL}/paypal/cancel`
-      },
       purchase_units: [
         {
           amount: {
@@ -173,8 +112,7 @@ app.post('/api/orders', async (req, res) => {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
+          'Content-Type': 'application/json'
         },
         timeout: 20000
       }
@@ -184,24 +122,57 @@ app.post('/api/orders', async (req, res) => {
       orderId: response.data.id,
       status: response.data.status
     });
-
   } catch (error) {
     console.error(
       'Create order error:',
       error.response?.data || error.message
     );
     res.status(500).json({
-      error: 'Failed to create PayPal order'
+      error: 'Failed to create order'
     });
   }
 });
 
-/* =========================
+/* ================================
+   CAPTURE PAYMENT
+================================ */
+
+app.post('/api/capture/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const accessToken = await getPayPalAccessToken();
+
+    const response = await axios.post(
+      `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 20000
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error(
+      'Capture error:',
+      error.response?.data || error.message
+    );
+    res.status(500).json({
+      error: 'Payment capture failed'
+    });
+  }
+});
+
+/* ================================
    START SERVER
-========================= */
+================================ */
 
 app.listen(PORT, () => {
-  console.log(`🚀 ERZone PayPal Backend Server running on port ${PORT}`);
-  console.log(`📍 Health check: ${BACKEND_URL}/health`);
-  console.log(`💰 PayPal API endpoint: ${BACKEND_URL}/api/orders`);
+  console.log(`🚀 ERZone PayPal Backend running on port ${PORT}`);
+  console.log(`📍 Health: http://localhost:${PORT}/health`);
+  console.log(`💰 Create Order: POST /api/orders`);
+  console.log(`✅ Capture Order: POST /api/capture/:orderId`);
 });
