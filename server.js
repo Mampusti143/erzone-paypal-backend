@@ -6,10 +6,9 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 /* ================================
-   PAYPAL CONFIG
+   CONFIG
 ================================ */
 
-// PayPal credentials (ENV FIRST, fallback for safety)
 const PAYPAL_CLIENT_ID =
   process.env.PAYPAL_CLIENT_ID ||
   'AXTNZhFFSksHwus-uXRnc6eCPlIqfn5xrhFbySj-1dc2wVRhAeoTi09F06gqQ7Dbl0wiWDF9Muzjl6d4';
@@ -18,8 +17,17 @@ const PAYPAL_CLIENT_SECRET =
   process.env.PAYPAL_CLIENT_SECRET ||
   'ENJvmRliowdh4KsGDVoYiEPW-yx2i0mlXGlMZ0hex2vZeQbv5iSiUHajDTGUqwRGCyJFN2VstYJz2uO7';
 
-// LIVE PayPal
 const PAYPAL_BASE_URL = 'https://api-m.paypal.com';
+
+// PUBLIC backend URL (Render)
+const BACKEND_URL =
+  process.env.BACKEND_URL ||
+  'https://erzone-paypal-backend.onrender.com';
+
+// Android deep link
+const MOBILE_RETURN_URL =
+  process.env.MOBILE_RETURN_URL ||
+  'com.example.erzone_bicyclestore_mobileapp://paypal';
 
 /* ================================
    MIDDLEWARE
@@ -32,7 +40,6 @@ app.use(express.json());
    BASIC ROUTES
 ================================ */
 
-// Health check (important for Render)
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
@@ -46,39 +53,66 @@ app.get('/', (req, res) => {
 });
 
 /* ================================
-   PAYPAL FUNCTIONS
+   PAYPAL REDIRECT (REQUIRED)
+================================ */
+
+// IMPORTANT: PayPal requires HTTPS return URLs
+// We redirect to Android deep link via HTML
+
+app.get('/paypal/return', (req, res) => {
+  const deepLink = MOBILE_RETURN_URL;
+  res.send(`
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0;url=${deepLink}" />
+      </head>
+      <body>
+        <script>window.location.href="${deepLink}";</script>
+      </body>
+    </html>
+  `);
+});
+
+app.get('/paypal/cancel', (req, res) => {
+  const deepLink = MOBILE_RETURN_URL;
+  res.send(`
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0;url=${deepLink}" />
+      </head>
+      <body>
+        <script>window.location.href="${deepLink}";</script>
+      </body>
+    </html>
+  `);
+});
+
+/* ================================
+   PAYPAL TOKEN
 ================================ */
 
 async function getPayPalAccessToken() {
-  try {
-    const auth = Buffer.from(
-      `${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`
-    ).toString('base64');
+  const auth = Buffer.from(
+    `${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`
+  ).toString('base64');
 
-    const response = await axios.post(
-      `${PAYPAL_BASE_URL}/v1/oauth2/token`,
-      'grant_type=client_credentials',
-      {
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        timeout: 15000
-      }
-    );
+  const response = await axios.post(
+    `${PAYPAL_BASE_URL}/v1/oauth2/token`,
+    'grant_type=client_credentials',
+    {
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      timeout: 15000
+    }
+  );
 
-    return response.data.access_token;
-  } catch (error) {
-    console.error(
-      'PayPal token error:',
-      error.response?.data || error.message
-    );
-    throw error;
-  }
+  return response.data.access_token;
 }
 
 /* ================================
-   CREATE ORDER (NO REDIRECT)
+   CREATE ORDER (FIXED)
 ================================ */
 
 app.post('/api/orders', async (req, res) => {
@@ -95,6 +129,11 @@ app.post('/api/orders', async (req, res) => {
 
     const orderData = {
       intent: 'CAPTURE',
+      application_context: {
+        return_url: `${BACKEND_URL}/paypal/return`,
+        cancel_url: `${BACKEND_URL}/paypal/cancel`,
+        user_action: 'PAY_NOW'
+      },
       purchase_units: [
         {
           amount: {
@@ -134,45 +173,11 @@ app.post('/api/orders', async (req, res) => {
 });
 
 /* ================================
-   CAPTURE PAYMENT
-================================ */
-
-app.post('/api/capture/:orderId', async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const accessToken = await getPayPalAccessToken();
-
-    const response = await axios.post(
-      `${PAYPAL_BASE_URL}/v2/checkout/orders/${orderId}/capture`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 20000
-      }
-    );
-
-    res.json(response.data);
-  } catch (error) {
-    console.error(
-      'Capture error:',
-      error.response?.data || error.message
-    );
-    res.status(500).json({
-      error: 'Payment capture failed'
-    });
-  }
-});
-
-/* ================================
    START SERVER
 ================================ */
 
 app.listen(PORT, () => {
   console.log(`🚀 ERZone PayPal Backend running on port ${PORT}`);
-  console.log(`📍 Health: http://localhost:${PORT}/health`);
-  console.log(`💰 Create Order: POST /api/orders`);
-  console.log(`✅ Capture Order: POST /api/capture/:orderId`);
+  console.log(`🌐 ${BACKEND_URL}`);
+  console.log(`💰 POST /api/orders`);
 });
