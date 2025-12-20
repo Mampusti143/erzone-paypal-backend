@@ -5,151 +5,203 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// PayPal credentials (from environment variables for security)
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || 'AXTNZhFFSksHwus-uXRnc6eCPlIqfn5xrhFbySj-1dc2wVRhAeoTi09F06gqQ7Dbl0wiWDF9Muzjl6d4';
-const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || 'ENJvmRliowdh4KsGDVoYiEPW-yx2i0mlXGlMZ0hex2vZeQbv5iSiUHajDTGUqwRGCyJFN2VstYJz2uO7';
-const PAYPAL_BASE_URL = 'https://api-m.paypal.com'; // Live environment
+/* =========================
+   PAYPAL CONFIG (BEST PRACTICE)
+========================= */
 
-// Mobile return URL (deep link back to Android app)
-// Dapat tumugma ito sa RETURN_URL sa Android app at sa intent-filter sa AndroidManifest.xml
+const PAYPAL_CLIENT_ID =
+  process.env.PAYPAL_CLIENT_ID ||
+  'AXTNZhFFSksHwus-uXRnc6eCPlIqfn5xrhFbySj-1dc2wVRhAeoTi09F06gqQ7Dbl0wiWDF9Muzjl6d4';
+
+const PAYPAL_CLIENT_SECRET =
+  process.env.PAYPAL_CLIENT_SECRET ||
+  'ENJvmRliowdh4KsGDVoYiEPW-yx2i0mlXGlMZ0hex2vZeQbv5iSiUHajDTGUqwRGCyJFN2VstYJz2uO7';
+
+// LIVE PayPal
+const PAYPAL_BASE_URL =
+  process.env.PAYPAL_BASE_URL ||
+  'https://api-m.paypal.com';
+
+// Render backend URL
+const BACKEND_URL =
+  process.env.BACKEND_URL ||
+  'https://erzone-paypal-backend.onrender.com';
+
+// Android deep link
 const MOBILE_RETURN_URL =
   process.env.MOBILE_RETURN_URL ||
   'com.example.erzone_bicyclestore_mobileapp://paypal';
 
-// Middleware
-app.use(cors()); // Allow requests from Android app
-app.use(express.json()); // Parse JSON bodies
+/* =========================
+   MIDDLEWARE
+========================= */
 
-// Health check endpoint (for Render cold start warm-up)
+app.use(cors());
+app.use(express.json());
+
+/* =========================
+   HEALTH & ROOT
+========================= */
+
 app.get('/health', (req, res) => {
-    res.status(200).send('OK');
+  res.status(200).send('OK');
 });
 
-// Root endpoint
 app.get('/', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        message: 'ERZone PayPal Backend Server is running',
-        timestamp: new Date().toISOString()
-    });
+  res.json({
+    status: 'OK',
+    message: 'ERZone PayPal Backend Server is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// PayPal return/cancel redirect endpoint (para sa application_context)
-// Magre-redirect sa deep link na ha-handle ng Android SDK
-// IMPORTANT: Gumamit ng HTML/JavaScript redirect para sa deep links
+/* =========================
+   PAYPAL RETURN / CANCEL
+========================= */
+
+// IMPORTANT:
+// HTML + JavaScript redirect (required for Android deep links)
 app.get('/paypal/return', (req, res) => {
-    // HTML redirect para sa deep link - ang Android SDK mismo ang magha-handle nito
-    const deepLink = MOBILE_RETURN_URL;
-    res.send(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${deepLink}"></head><body><script>window.location.href="${deepLink}";</script></body></html>`);
+  res.setHeader('Content-Type', 'text/html');
+  res.setHeader('Cache-Control', 'no-store');
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0;url=${MOBILE_RETURN_URL}">
+      </head>
+      <body>
+        <script>
+          window.location.href = "${MOBILE_RETURN_URL}";
+        </script>
+      </body>
+    </html>
+  `);
 });
 
 app.get('/paypal/cancel', (req, res) => {
-    // HTML redirect para sa deep link - ang Android SDK mismo ang magha-handle nito
-    const deepLink = MOBILE_RETURN_URL;
-    res.send(`<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${deepLink}"></head><body><script>window.location.href="${deepLink}";</script></body></html>`);
+  res.setHeader('Content-Type', 'text/html');
+  res.setHeader('Cache-Control', 'no-store');
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0;url=${MOBILE_RETURN_URL}">
+      </head>
+      <body>
+        <script>
+          window.location.href = "${MOBILE_RETURN_URL}";
+        </script>
+      </body>
+    </html>
+  `);
 });
 
-// Get PayPal access token
+/* =========================
+   PAYPAL ACCESS TOKEN
+========================= */
+
 async function getPayPalAccessToken() {
-    try {
-        const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
-        
-        const response = await axios.post(
-            `${PAYPAL_BASE_URL}/v1/oauth2/token`,
-            'grant_type=client_credentials',
-            {
-                headers: {
-                    'Authorization': `Basic ${auth}`,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                timeout: 15000 // 15 seconds timeout para hindi mag-hang
-            }
-        );
-        
-        return response.data.access_token;
-    } catch (error) {
-        console.error('Error getting PayPal access token:', error.response?.data || error.message);
-        throw error;
-    }
+  try {
+    const auth = Buffer.from(
+      `${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`
+    ).toString('base64');
+
+    const response = await axios.post(
+      `${PAYPAL_BASE_URL}/v1/oauth2/token`,
+      'grant_type=client_credentials',
+      {
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        timeout: 15000
+      }
+    );
+
+    return response.data.access_token;
+  } catch (error) {
+    console.error(
+      'PayPal token error:',
+      error.response?.data || error.message
+    );
+    throw error;
+  }
 }
 
-// Create PayPal order endpoint
+/* =========================
+   CREATE PAYPAL ORDER
+========================= */
+
 app.post('/api/orders', async (req, res) => {
-    const startTime = Date.now();
-    try {
-        const { amount, currency, description } = req.body;
-        
-        console.log(`[${new Date().toISOString()}] Creating PayPal order: ${amount} ${currency}`);
-        
-        // Validate request body
-        if (!amount || !currency) {
-            return res.status(400).json({
-                error: 'Missing required fields',
-                message: 'amount and currency are required'
-            });
-        }
-        
-        // Get access token
-        const accessToken = await getPayPalAccessToken();
-        
-        // Create order
-        // IMPORTANT: Kailangan natin ng HTTP/HTTPS URLs sa application_context
-        // (hindi custom scheme). Ang backend redirect endpoint ang magre-redirect
-        // sa deep link, tapos ang Android SDK mismo ang magha-handle.
-        const baseUrl = process.env.BACKEND_URL || 'https://erzone-paypal-backend.onrender.com';
-        const orderData = {
-            intent: 'CAPTURE',
-            application_context: {
-                return_url: `${baseUrl}/paypal/return`,
-                cancel_url: `${baseUrl}/paypal/cancel`,
-                // Since alam na natin ang final amount, gamitin ang PAY_NOW flow
-                user_action: 'PAY_NOW'
-            },
-            purchase_units: [{
-                amount: {
-                    currency_code: currency || 'PHP',
-                    value: amount.toString()
-                },
-                description: description || 'ERZone Item'
-            }]
-        };
-        
-        const response = await axios.post(
-            `${PAYPAL_BASE_URL}/v2/checkout/orders`,
-            orderData,
-            {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                timeout: 20000 // 20 seconds timeout para hindi mag-hang
-            }
-        );
-        
-        // Return order ID
-        const elapsed = Date.now() - startTime;
-        console.log(`[${new Date().toISOString()}] Order created successfully in ${elapsed}ms: ${response.data.id}`);
-        
-        res.json({
-            orderId: response.data.id,
-            status: response.data.status
-        });
-        
-    } catch (error) {
-        const elapsed = Date.now() - startTime;
-        console.error(`[${new Date().toISOString()}] Error creating PayPal order (${elapsed}ms):`, error.response?.data || error.message);
-        res.status(500).json({
-            error: 'Failed to create PayPal order',
-            message: error.response?.data?.message || error.message
-        });
+  try {
+    const { amount, currency, description } = req.body;
+
+    if (!amount || !currency) {
+      return res.status(400).json({
+        error: 'amount and currency are required'
+      });
     }
+
+    const accessToken = await getPayPalAccessToken();
+
+    const orderData = {
+      intent: 'CAPTURE',
+      application_context: {
+        brand_name: 'ERZone Bicycle Store',
+        landing_page: 'BILLING',
+        user_action: 'PAY_NOW',
+        return_url: `${BACKEND_URL}/paypal/return`,
+        cancel_url: `${BACKEND_URL}/paypal/cancel`
+      },
+      purchase_units: [
+        {
+          amount: {
+            currency_code: currency,
+            value: amount.toString()
+          },
+          description: description || 'ERZone Item'
+        }
+      ]
+    };
+
+    const response = await axios.post(
+      `${PAYPAL_BASE_URL}/v2/checkout/orders`,
+      orderData,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        timeout: 20000
+      }
+    );
+
+    res.json({
+      orderId: response.data.id,
+      status: response.data.status
+    });
+
+  } catch (error) {
+    console.error(
+      'Create order error:',
+      error.response?.data || error.message
+    );
+    res.status(500).json({
+      error: 'Failed to create PayPal order'
+    });
+  }
 });
 
-// Start server
+/* =========================
+   START SERVER
+========================= */
+
 app.listen(PORT, () => {
-    console.log(`🚀 ERZone PayPal Backend Server running on port ${PORT}`);
-    console.log(`📍 Health check: http://localhost:${PORT}/`);
-    console.log(`💰 PayPal API endpoint: http://localhost:${PORT}/api/orders`);
+  console.log(`🚀 ERZone PayPal Backend Server running on port ${PORT}`);
+  console.log(`📍 Health check: ${BACKEND_URL}/health`);
+  console.log(`💰 PayPal API endpoint: ${BACKEND_URL}/api/orders`);
 });
-
