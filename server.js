@@ -12,8 +12,8 @@ const clientSecret = process.env.CLIENT_SECRET;
 app.use(bodyParser.json());
 
 async function getAccessToken(clientId, clientSecret) {
-  const auth = Buffer.from(${clientId}:${clientSecret}).toString('base64');
-
+  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  
   try {
     const response = await axios.post(
       'https://api-m.paypal.com/v1/oauth2/token',
@@ -21,11 +21,11 @@ async function getAccessToken(clientId, clientSecret) {
       {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': Basic ${auth}
+          'Authorization': `Basic ${auth}`
         }
       }
     );
-
+    
     return response.data.access_token;
   } catch (error) {
     console.error("Error fetching access token:", error.response?.data || error.message);
@@ -51,11 +51,11 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': Bearer ${accessToken}
+          'Authorization': `Bearer ${accessToken}`
         }
       }
     );
-
+    
     console.log("PayPal order created:", response.data.id);
     return response.data.id;
   } catch (error) {
@@ -66,16 +66,16 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
 async function capturePaypalOrder(accessToken, orderId) {
   try {
     const response = await axios.post(
-      https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture,
+      `https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`,
       {},
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': Bearer ${accessToken}
+          'Authorization': `Bearer ${accessToken}`
         }
       }
     );
-
+    
     console.log("PayPal order captured:", response.data.id);
     return response.data;
   } catch (error) {
@@ -85,37 +85,37 @@ async function capturePaypalOrder(accessToken, orderId) {
 
 app.post('/create-paypal-order', async (req, res) => {
   const { totalAmount, customOrderId } = req.body;
-
+  
   if (!totalAmount || !customOrderId) {
     return res.status(400).json({ error: 'Missing totalAmount or customOrderId' });
   }
-
+  
   const accessToken = await getAccessToken(clientId, clientSecret);
   if (!accessToken) {
     return res.status(500).json({ error: 'Failed to generate access token' });
   }
-
+  
   const paypalOrderId = await createPaypalOrder(accessToken, totalAmount, customOrderId);
   if (!paypalOrderId) {
     return res.status(500).json({ error: 'Failed to create PayPal order' });
   }
-
+  
   res.json({ paypalOrderId });
 });
 
 app.post('/capture-paypal-order', async (req, res) => {
   const { orderId } = req.body;
-
+  
   if (!orderId) {
     return res.status(400).json({ error: 'Missing PayPal orderId' });
   }
-
+  
   const accessToken = await getAccessToken(clientId, clientSecret);
   const result = await capturePaypalOrder(accessToken, orderId);
-
+  
   res.json(result);
 });
 
 app.listen(PORT, () => {
-  console.log(Server is running on http://localhost:${PORT});
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
