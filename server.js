@@ -11,23 +11,6 @@ const clientSecret = "ENJvmRliowdh4KsGDVoYiEPW-yx2i0mlXGlMZ0hex2vZeQbv5iSiUHajDT
 
 app.use(bodyParser.json());
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({ 
-    status: 'Server is running', 
-    timestamp: new Date().toISOString(),
-    environment: 'LIVE'
-  });
-});
-
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    environment: 'LIVE'
-  });
-});
-
 async function getAccessToken(clientId, clientSecret) {
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   
@@ -101,31 +84,22 @@ async function capturePaypalOrder(accessToken, orderId) {
 }
 
 app.post('/create-paypal-order', async (req, res) => {
-  console.log('=== /create-paypal-order endpoint called ===');
-  console.log('Request body:', req.body);
-  
   const { totalAmount, customOrderId } = req.body;
   
   if (!totalAmount || !customOrderId) {
-    console.log('Missing required fields - totalAmount:', totalAmount, 'customOrderId:', customOrderId);
     return res.status(400).json({ error: 'Missing totalAmount or customOrderId' });
   }
   
-  console.log('Getting access token...');
   const accessToken = await getAccessToken(clientId, clientSecret);
   if (!accessToken) {
-    console.log('Failed to get access token');
     return res.status(500).json({ error: 'Failed to generate access token' });
   }
   
-  console.log('Creating PayPal order with amount:', totalAmount, 'customOrderId:', customOrderId);
   const paypalOrderId = await createPaypalOrder(accessToken, totalAmount, customOrderId);
   if (!paypalOrderId) {
-    console.log('Failed to create PayPal order');
     return res.status(500).json({ error: 'Failed to create PayPal order' });
   }
   
-  console.log('Successfully created PayPal order:', paypalOrderId);
   res.json({ paypalOrderId });
 });
 
@@ -145,3 +119,7 @@ app.post('/capture-paypal-order', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
