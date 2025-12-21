@@ -9,16 +9,14 @@ const PORT = process.env.PORT || 10000;
    CONFIG
 ================================ */
 
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
-const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || 'AXTNZhFFSksHwus-uXRnc6eCPlIqfn5xrhFbySj-1dc2wVRhAeoTi09F06gqQ7Dbl0wiWDF9Muzjl6d4';
+
+const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || 'ENJvmRliowdh4KsGDVoYiEPW-yx2i0mlXGlMZ0hex2vZeQbv5iSiUHajDTGUqwRGCyJFN2VstYJz2uO7';
 
 const PAYPAL_BASE_URL = 'https://api-m.paypal.com';
 
-// Render public URL (HTTPS REQUIRED)
 const BACKEND_URL = 'https://erzone-paypal-backend.onrender.com';
-
-// Android deep link
-const MOBILE_DEEPLINK = 'com.example.erzone_bicyclestore_mobileapp://paypal';
+const MOBILE_RETURN_URL = 'com.example.erzone_bicyclestore_mobileapp://paypal';
 
 /* ================================
    MIDDLEWARE
@@ -34,30 +32,31 @@ app.use(express.json());
 app.get('/health', (req, res) => res.send('OK'));
 
 app.get('/', (req, res) => {
-  res.json({ status: 'OK', message: 'PayPal backend running' });
+  res.json({ status: 'OK' });
 });
 
 /* ================================
-   PAYPAL REDIRECT (REQUIRED)
+   PAYPAL → ANDROID BRIDGE
 ================================ */
 
-app.get('/paypal/return', (req, res) => {
+function redirectToApp(res) {
   res.send(`
     <html>
       <head>
-        <meta http-equiv="refresh" content="0;url=${MOBILE_DEEPLINK}" />
+        <meta http-equiv="refresh" content="0;url=${MOBILE_RETURN_URL}" />
       </head>
       <body>
         Redirecting...
-        <script>window.location.href="${MOBILE_DEEPLINK}"</script>
+        <script>
+          window.location.href = "${MOBILE_RETURN_URL}";
+        </script>
       </body>
     </html>
   `);
-});
+}
 
-app.get('/paypal/cancel', (req, res) => {
-  res.redirect(MOBILE_DEEPLINK);
-});
+app.get('/paypal/return', (req, res) => redirectToApp(res));
+app.get('/paypal/cancel', (req, res) => redirectToApp(res));
 
 /* ================================
    PAYPAL TOKEN
@@ -92,22 +91,26 @@ app.post('/api/orders', async (req, res) => {
 
     const accessToken = await getPayPalAccessToken();
 
-    const order = await axios.post(
-      `${PAYPAL_BASE_URL}/v2/checkout/orders`,
-      {
-        intent: 'CAPTURE',
-        application_context: {
-          return_url: `${BACKEND_URL}/paypal/return`,
-          cancel_url: `${BACKEND_URL}/paypal/cancel`,
-          user_action: 'PAY_NOW'
-        },
-        purchase_units: [{
+    const orderData = {
+      intent: 'CAPTURE',
+      application_context: {
+        return_url: `${BACKEND_URL}/paypal/return`,
+        cancel_url: `${BACKEND_URL}/paypal/cancel`,
+        user_action: 'PAY_NOW'
+      },
+      purchase_units: [
+        {
           amount: {
             currency_code: currency,
             value: amount
           }
-        }]
-      },
+        }
+      ]
+    };
+
+    const response = await axios.post(
+      `${PAYPAL_BASE_URL}/v2/checkout/orders`,
+      orderData,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -116,18 +119,14 @@ app.post('/api/orders', async (req, res) => {
       }
     );
 
-    const approvalUrl = order.data.links.find(
-      l => l.rel === 'approve'
-    ).href;
-
     res.json({
-      orderId: order.data.id,
-      approvalUrl
+      orderId: response.data.id,
+      approveUrl: response.data.links.find(l => l.rel === 'approve').href
     });
 
   } catch (err) {
     console.error(err.response?.data || err.message);
-    res.status(500).json({ error: 'PayPal order failed' });
+    res.status(500).json({ error: 'Create order failed' });
   }
 });
 
@@ -136,5 +135,5 @@ app.post('/api/orders', async (req, res) => {
 ================================ */
 
 app.listen(PORT, () => {
-  console.log(`🚀 Running on ${PORT}`);
+  console.log(`🚀 Running on port ${PORT}`);
 });
