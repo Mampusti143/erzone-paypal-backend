@@ -59,33 +59,35 @@ app.get('/', (req, res) => {
 // IMPORTANT: PayPal requires HTTPS return URLs
 // We redirect to Android deep link via HTML
 
-app.get('/paypal/return', (req, res) => {
-  const deepLink = MOBILE_RETURN_URL;
-  res.send(`
-    <html>
-      <head>
-        <meta http-equiv="refresh" content="0;url=${deepLink}" />
-      </head>
-      <body>
-        <script>window.location.href="${deepLink}";</script>
-      </body>
-    </html>
-  `);
-});
+// FIX: remove paypal /return and /cancel
 
-app.get('/paypal/cancel', (req, res) => {
-  const deepLink = MOBILE_RETURN_URL;
-  res.send(`
-    <html>
-      <head>
-        <meta http-equiv="refresh" content="0;url=${deepLink}" />
-      </head>
-      <body>
-        <script>window.location.href="${deepLink}";</script>
-      </body>
-    </html>
-  `);
-});
+// app.get('/paypal/return', (req, res) => {
+//   const deepLink = MOBILE_RETURN_URL;
+//   res.send(`
+//     <html>
+//       <head>
+//         <meta http-equiv="refresh" content="0;url=${deepLink}" />
+//       </head>
+//       <body>
+//         <script>window.location.href="${deepLink}";</script>
+//       </body>
+//     </html>
+//   `);
+// });
+
+// app.get('/paypal/cancel', (req, res) => {
+//   const deepLink = MOBILE_RETURN_URL;
+//   res.send(`
+//     <html>
+//       <head>
+//         <meta http-equiv="refresh" content="0;url=${deepLink}" />
+//       </head>
+//       <body>
+//         <script>window.location.href="${deepLink}";</script>
+//       </body>
+//     </html>
+//   `);
+// });
 
 /* ================================
    PAYPAL TOKEN
@@ -127,11 +129,13 @@ app.post('/api/orders', async (req, res) => {
 
     const accessToken = await getPayPalAccessToken();
 
+    //FIX: orderData
+
     const orderData = {
       intent: 'CAPTURE',
       application_context: {
-        return_url: `${BACKEND_URL}/paypal/return`,
-        cancel_url: `${BACKEND_URL}/paypal/cancel`,
+        return_url: MOBILE_RETURN_URL,
+        cancel_url: MOBILE_RETURN_URL,
         user_action: 'PAY_NOW'
       },
       purchase_units: [
