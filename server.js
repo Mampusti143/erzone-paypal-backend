@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
   res.json({ 
     status: 'Server is running', 
     timestamp: new Date().toISOString(),
-    environment: 'SANDBOX'
+    environment: 'LIVE'
   });
 });
 
@@ -24,7 +24,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    environment: 'SANDBOX'
+    environment: 'LIVE'
   });
 });
 
@@ -33,7 +33,7 @@ async function getAccessToken(clientId, clientSecret) {
   
   try {
     const response = await axios.post(
-      'https://api-m.sandbox.paypal.com/v1/oauth2/token',
+      'https://api-m.paypal.com/v1/oauth2/token',
       qs.stringify({ grant_type: 'client_credentials' }),
       {
         headers: {
@@ -52,7 +52,7 @@ async function getAccessToken(clientId, clientSecret) {
 async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
   try {
     const response = await axios.post(
-      'https://api-m.sandbox.paypal.com/v2/checkout/orders',
+      'https://api-m.paypal.com/v2/checkout/orders',
       {
         intent: "CAPTURE",
         purchase_units: [
@@ -83,7 +83,7 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
 async function capturePaypalOrder(accessToken, orderId) {
   try {
     const response = await axios.post(
-      `https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`,
+      `https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`,
       {},
       {
         headers: {
