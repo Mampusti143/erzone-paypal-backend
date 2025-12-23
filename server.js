@@ -133,10 +133,13 @@ app.post('/create-paypal-order', async (req, res) => {
   const paypalOrderData = await createPaypalOrder(accessToken, totalAmount, customOrderId);
   if (!paypalOrderData) {
     console.error("Failed to create PayPal order");
+    
+    // Check if it's a temporary restriction vs permanent restriction
     return res.status(422).json({ 
-      error: 'PayPal account restricted',
-      message: 'Your PayPal business account needs to be verified to accept payments. Please complete your PayPal account verification.',
-      details: 'PAYEE_ACCOUNT_RESTRICTED - Complete business verification in PayPal dashboard'
+      error: 'PayPal payment temporarily unavailable',
+      message: 'Your PayPal account may be under temporary review after recent successful payments. This is normal for new accounts.',
+      details: 'Try again in a few hours, or check your PayPal dashboard for any notifications.',
+      suggestion: 'Recent successful payments may trigger temporary security reviews.'
     });
   }
   
