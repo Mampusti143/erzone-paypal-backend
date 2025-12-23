@@ -132,17 +132,36 @@ app.get('/paypal-success', (req, res) => {
   const token = req.query.token;
   const PayerID = req.query.PayerID;
   
-  // Return a success page that redirects back to the app
+  // Return a success page that uses meta refresh instead of JavaScript
   res.send(`
     <html>
-      <head><title>Payment Success</title></head>
+      <head>
+        <title>Payment Success</title>
+        <meta http-equiv="refresh" content="2;url=com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}">
+      </head>
       <body>
         <h2>Payment Successful!</h2>
         <p>Redirecting back to app...</p>
+        <p>If you are not redirected automatically, please close this window and return to the app.</p>
         <script>
+          // Try multiple redirect methods
           setTimeout(() => {
-            window.location.href = 'com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}';
+            try {
+              // Try to redirect using window.location
+              window.location.href = 'com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}';
+            } catch(e) {
+              console.log('Redirect failed:', e);
+              // If redirect fails, try to close the window
+              window.close();
+            }
           }, 1000);
+          
+          // Also try immediate redirect
+          try {
+            window.location.replace('com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}');
+          } catch(e) {
+            console.log('Immediate redirect failed:', e);
+          }
         </script>
       </body>
     </html>
