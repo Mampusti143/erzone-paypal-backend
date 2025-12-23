@@ -132,37 +132,27 @@ app.get('/paypal-success', (req, res) => {
   const token = req.query.token;
   const PayerID = req.query.PayerID;
   
-  // Return a success page that uses meta refresh instead of JavaScript
+  // Return a simple success page without any redirects
   res.send(`
     <html>
       <head>
         <title>Payment Success</title>
-        <meta http-equiv="refresh" content="2;url=com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}">
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          .success { color: green; font-size: 24px; margin-bottom: 20px; }
+          .info { color: #666; font-size: 16px; }
+        </style>
       </head>
       <body>
-        <h2>Payment Successful!</h2>
-        <p>Redirecting back to app...</p>
-        <p>If you are not redirected automatically, please close this window and return to the app.</p>
-        <script>
-          // Try multiple redirect methods
-          setTimeout(() => {
-            try {
-              // Try to redirect using window.location
-              window.location.href = 'com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}';
-            } catch(e) {
-              console.log('Redirect failed:', e);
-              // If redirect fails, try to close the window
-              window.close();
-            }
-          }, 1000);
-          
-          // Also try immediate redirect
-          try {
-            window.location.replace('com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}');
-          } catch(e) {
-            console.log('Immediate redirect failed:', e);
-          }
-        </script>
+        <div class="success">✓ Payment Successful!</div>
+        <div class="info">Processing your payment...</div>
+        <div class="info">Please wait while we complete your order.</div>
+        
+        <!-- Hidden data for the app to read -->
+        <div id="payment-data" style="display: none;">
+          <span id="token">${token}</span>
+          <span id="payerid">${PayerID}</span>
+        </div>
       </body>
     </html>
   `);
