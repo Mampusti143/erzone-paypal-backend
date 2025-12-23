@@ -26,19 +26,14 @@ async function getAccessToken(clientId, clientSecret) {
       }
     );
     
-    console.log("Access token obtained successfully");
     return response.data.access_token;
   } catch (error) {
     console.error("Error fetching access token:", error.response?.data || error.message);
-    console.error("Status:", error.response?.status);
-    console.error("Headers:", error.response?.headers);
-    return null;
   }
 }
 
 async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
   try {
-    console.log("Creating PayPal order with amount:", totalAmount);
     const response = await axios.post(
       'https://api-m.paypal.com/v2/checkout/orders',
       {
@@ -65,25 +60,15 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
       }
     );
     
-    console.log("PayPal order created successfully:", response.data.id);
+    console.log("PayPal order created:", response.data.id);
     return response.data;
   } catch (error) {
     console.error("Error creating PayPal order:", error.response?.data || error.message);
-    console.error("Status:", error.response?.status);
-    console.error("Request data:", {
-      intent: "CAPTURE",
-      purchase_units: [{
-        amount: { currency_code: "PHP", value: totalAmount },
-        custom_id: customOrderId
-      }]
-    });
-    return null;
   }
 }
 
 async function capturePaypalOrder(accessToken, orderId) {
   try {
-    console.log("Capturing PayPal order:", orderId);
     const response = await axios.post(
       `https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`,
       {},
@@ -95,60 +80,32 @@ async function capturePaypalOrder(accessToken, orderId) {
       }
     );
     
-    console.log("PayPal order captured successfully:", response.data.id);
+    console.log("PayPal order captured:", response.data.id);
     return response.data;
   } catch (error) {
     console.error("Error capturing PayPal order:", error.response?.data || error.message);
-    console.error("Status:", error.response?.status);
-    console.error("Order ID:", orderId);
-    return null;
   }
 }
 
 app.post('/create-paypal-order', async (req, res) => {
-  console.log("=== CREATE PAYPAL ORDER REQUEST ===");
-  console.log("Request body:", req.body);
-  
   const { totalAmount, customOrderId } = req.body;
   
   if (!totalAmount || !customOrderId) {
-    console.error("Missing required fields:", { totalAmount, customOrderId });
-    return res.status(400).json({ 
-      error: 'Missing totalAmount or customOrderId',
-      received: { totalAmount, customOrderId }
-    });
+    return res.status(400).json({ error: 'Missing totalAmount or customOrderId' });
   }
   
-  console.log("Getting access token...");
   const accessToken = await getAccessToken(clientId, clientSecret);
   if (!accessToken) {
-    console.error("Failed to get access token");
-    return res.status(500).json({ 
-      error: 'Failed to generate access token',
-      details: 'Check PayPal credentials and network connection'
-    });
+    return res.status(500).json({ error: 'Failed to generate access token' });
   }
   
-  console.log("Creating PayPal order...");
   const paypalOrderData = await createPaypalOrder(accessToken, totalAmount, customOrderId);
   if (!paypalOrderData) {
-    console.error("Failed to create PayPal order");
-    
-    // Check if it's a temporary restriction vs permanent restriction
-    return res.status(422).json({ 
-      error: 'PayPal payment temporarily unavailable',
-      message: 'Your PayPal account may be under temporary review after recent successful payments. This is normal for new accounts.',
-      details: 'Try again in a few hours, or check your PayPal dashboard for any notifications.',
-      suggestion: 'Recent successful payments may trigger temporary security reviews.'
-    });
+    return res.status(500).json({ error: 'Failed to create PayPal order' });
   }
   
   // Find the approval URL from PayPal response
   const approvalUrl = paypalOrderData.links.find(link => link.rel === 'approve');
-  
-  console.log("PayPal order created successfully");
-  console.log("Order ID:", paypalOrderData.id);
-  console.log("Approval URL:", approvalUrl ? approvalUrl.href : 'Not found');
   
   res.json({ 
     paypalOrderId: paypalOrderData.id,
@@ -157,39 +114,15 @@ app.post('/create-paypal-order', async (req, res) => {
 });
 
 app.post('/capture-paypal-order', async (req, res) => {
-  console.log("=== CAPTURE PAYPAL ORDER REQUEST ===");
-  console.log("Request body:", req.body);
-  
   const { orderId } = req.body;
   
   if (!orderId) {
-    console.error("Missing orderId");
-    return res.status(400).json({ 
-      error: 'Missing PayPal orderId',
-      received: req.body
-    });
+    return res.status(400).json({ error: 'Missing PayPal orderId' });
   }
   
-  console.log("Getting access token for capture...");
   const accessToken = await getAccessToken(clientId, clientSecret);
-  if (!accessToken) {
-    console.error("Failed to get access token for capture");
-    return res.status(500).json({ 
-      error: 'Failed to generate access token for capture'
-    });
-  }
-  
-  console.log("Capturing PayPal order...");
   const result = await capturePaypalOrder(accessToken, orderId);
-  if (!result) {
-    console.error("Failed to capture PayPal order");
-    return res.status(500).json({ 
-      error: 'Failed to capture PayPal order',
-      orderId: orderId
-    });
-  }
   
-  console.log("PayPal order captured successfully");
   res.json(result);
 });
 
