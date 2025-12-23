@@ -133,9 +133,10 @@ app.post('/create-paypal-order', async (req, res) => {
   const paypalOrderData = await createPaypalOrder(accessToken, totalAmount, customOrderId);
   if (!paypalOrderData) {
     console.error("Failed to create PayPal order");
-    return res.status(500).json({ 
-      error: 'Failed to create PayPal order',
-      details: 'Check PayPal API response and order data'
+    return res.status(422).json({ 
+      error: 'PayPal account restricted',
+      message: 'Your PayPal business account needs to be verified to accept payments. Please complete your PayPal account verification.',
+      details: 'PAYEE_ACCOUNT_RESTRICTED - Complete business verification in PayPal dashboard'
     });
   }
   
