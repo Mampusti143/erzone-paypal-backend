@@ -46,7 +46,11 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
             },
             custom_id: customOrderId
           }
-        ]
+        ],
+        application_context: {
+          return_url: "https://erzone-paypal-backend.onrender.com/paypal-success",
+          cancel_url: "https://erzone-paypal-backend.onrender.com/paypal-cancel"
+        }
       },
       {
         headers: {
@@ -57,7 +61,7 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
     );
     
     console.log("PayPal order created:", response.data.id);
-    return response.data.id;
+    return response.data;
   } catch (error) {
     console.error("Error creating PayPal order:", error.response?.data || error.message);
   }
@@ -95,12 +99,18 @@ app.post('/create-paypal-order', async (req, res) => {
     return res.status(500).json({ error: 'Failed to generate access token' });
   }
   
-  const paypalOrderId = await createPaypalOrder(accessToken, totalAmount, customOrderId);
-  if (!paypalOrderId) {
+  const paypalOrderData = await createPaypalOrder(accessToken, totalAmount, customOrderId);
+  if (!paypalOrderData) {
     return res.status(500).json({ error: 'Failed to create PayPal order' });
   }
   
-  res.json({ paypalOrderId });
+  // Find the approval URL from PayPal response
+  const approvalUrl = paypalOrderData.links.find(link => link.rel === 'approve');
+  
+  res.json({ 
+    paypalOrderId: paypalOrderData.id,
+    approvalUrl: approvalUrl ? approvalUrl.href : null
+  });
 });
 
 app.post('/capture-paypal-order', async (req, res) => {
@@ -114,6 +124,49 @@ app.post('/capture-paypal-order', async (req, res) => {
   const result = await capturePaypalOrder(accessToken, orderId);
   
   res.json(result);
+});
+
+app.get('/paypal-success', (req, res) => {
+  console.log('PayPal success endpoint hit with query params:', req.query);
+  
+  const token = req.query.token;
+  const PayerID = req.query.PayerID;
+  
+  // Return a success page that redirects back to the app
+  res.send(`
+    <html>
+      <head><title>Payment Success</title></head>
+      <body>
+        <h2>Payment Successful!</h2>
+        <p>Redirecting back to app...</p>
+        <script>
+          setTimeout(() => {
+            window.location.href = 'com.example.erzone_bicyclestore_mobileapp://paypal/success?token=${token}&PayerID=${PayerID}';
+          }, 1000);
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+app.get('/paypal-cancel', (req, res) => {
+  console.log('PayPal cancel endpoint hit');
+  
+  // Return a cancel page that redirects back to the app
+  res.send(`
+    <html>
+      <head><title>Payment Cancelled</title></head>
+      <body>
+        <h2>Payment Cancelled</h2>
+        <p>Redirecting back to app...</p>
+        <script>
+          setTimeout(() => {
+            window.location.href = 'com.example.erzone_bicyclestore_mobileapp://paypal/cancel';
+          }, 1000);
+        </script>
+      </body>
+    </html>
+  `);
 });
 
 app.listen(PORT, () => {
