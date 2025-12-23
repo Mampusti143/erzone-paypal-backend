@@ -37,7 +37,7 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
     const response = await axios.post(
       'https://api-m.sandbox.paypal.com/v2/checkout/orders',
       {
-        intent: "AUTHORIZE",
+        intent: "CAPTURE",
         purchase_units: [
           {
             amount: {
