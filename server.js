@@ -6,8 +6,8 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = 3000;
 
-const clientId = "AWFA4DMHgtaHjU5Ifi7qOIWicpfwCR_-xOgYwstqiMY78NqFkTrHibnOCVsAg0R-BMPvVNWP8DsZvIHp";
-const clientSecret = "EF4m_KyXRexdp7aDdUWCZ4u4wGEw08OVtHZcGsB2gjn24HniWkxxxjLjjg1vpqYwhVLt4eQY_o_q-xlu";
+const clientId = "ATfaFHHpphrshZ9XzFB4hb587QmJW6GQEM7IVji4JvGgCmANJUCeQQM9fThEoWQP-hESd91rjMjq7SJ3";
+const clientSecret = "EBdT0JoMF9btQfTrIjyWYl2-u2NXXBYCK1Neobq5L-P95GsFQvT5La1Q2VO7m3_Z1ntD2b3f7DZ96kSv";
 
 app.use(bodyParser.json());
 
@@ -16,7 +16,7 @@ async function getAccessToken(clientId, clientSecret) {
   
   try {
     const response = await axios.post(
-      'https://api-m.paypal.com/v1/oauth2/token',
+      'https://api-m.sandbox.paypal.com/v1/oauth2/token',
       qs.stringify({ grant_type: 'client_credentials' }),
       {
         headers: {
@@ -35,9 +35,9 @@ async function getAccessToken(clientId, clientSecret) {
 async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
   try {
     const response = await axios.post(
-      'https://api-m.paypal.com/v2/checkout/orders',
+      'https://api-m.sandbox.paypal.com/v2/checkout/orders',
       {
-        intent: "CAPTURE",
+        intent: "AUTHORIZE",
         purchase_units: [
           {
             amount: {
@@ -66,7 +66,7 @@ async function createPaypalOrder(accessToken, totalAmount, customOrderId) {
 async function capturePaypalOrder(accessToken, orderId) {
   try {
     const response = await axios.post(
-      `https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`,
+      `https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`,
       {},
       {
         headers: {
