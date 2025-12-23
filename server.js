@@ -132,21 +132,86 @@ app.get('/paypal-success', (req, res) => {
   const token = req.query.token;
   const PayerID = req.query.PayerID;
   
-  // Return a simple success page without any redirects
+  // Return a better looking success page
   res.send(`
     <html>
       <head>
         <title>Payment Success</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-          .success { color: green; font-size: 24px; margin-bottom: 20px; }
-          .info { color: #666; font-size: 16px; }
+          body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+          .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+          }
+          .success-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s ease-in-out;
+          }
+          .success-title { 
+            font-size: 32px; 
+            font-weight: bold;
+            margin-bottom: 15px;
+            animation: fadeIn 1s ease-in-out 0.5s both;
+          }
+          .success-message { 
+            font-size: 18px; 
+            margin-bottom: 10px;
+            animation: fadeIn 1s ease-in-out 1s both;
+          }
+          .processing { 
+            font-size: 16px; 
+            opacity: 0.8;
+            animation: fadeIn 1s ease-in-out 1.5s both;
+          }
+          .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+          }
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
         </style>
       </head>
       <body>
-        <div class="success">✓ Payment Successful!</div>
-        <div class="info">Processing your payment...</div>
-        <div class="info">Please wait while we complete your order.</div>
+        <div class="container">
+          <div class="success-icon">✅</div>
+          <div class="success-title">Payment Successful!</div>
+          <div class="success-message">Your payment has been processed successfully.</div>
+          <div class="processing">Processing your order...</div>
+          <div class="spinner"></div>
+        </div>
         
         <!-- Hidden data for the app to read -->
         <div id="payment-data" style="display: none;">
