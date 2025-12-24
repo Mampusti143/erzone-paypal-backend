@@ -6,8 +6,8 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = 3000;
 
-const clientId = "AWFA4DMHgtaHjU5Ifi7qOIWicpfwCR_-xOgYwstqiMY78NqFkTrHibnOCVsAg0R-BMPvVNWP8DsZvIHp";
-const clientSecret = "EF4m_KyXRexdp7aDdUWCZ4u4wGEw08OVtHZcGsB2gjn24HniWkxxxjLjjg1vpqYwhVLt4eQY_o_q-xlu";
+const clientId = "ASJu8kQirpSYzns4wbalmvNb80cxUJvUxga07AyOTTb1ub1rNYg49XDVRmsMjYkhWi2pEsGJUtHlGg5Y";
+const clientSecret = "EMLhPP-HSQl5pZQ5AZ9WDmZLfuSe9y3-WWW6_VivmootCpcZVdmxDYqp6wZ-UN1lZ0F5kJB25oH8DlLe";
 
 app.use(bodyParser.json());
 
